@@ -1,0 +1,30 @@
+{
+  "actorSpecification": 1,
+  "name": "onchain-attestation",
+  "version": "1.0.0",
+  "buildTag": "latest",
+  "environmentVariables": {
+    "SOLANA_PRIVATE_KEY": {
+      "description": "Base58-encoded Solana private key for signing attestations",
+      "isSecret": true
+    },
+    "BASE_PRIVATE_KEY": {
+      "description": "0x-prefixed hex EVM private key for Base attestations",
+      "isSecret": true
+    },
+    "SOLANA_RPC_URL": {
+      "description": "Solana RPC endpoint (optional, defaults to public RPC)",
+      "value": "https://api.mainnet-beta.solana.com"
+    },
+    "BASE_RPC_URL": {
+      "description": "Base RPC endpoint (optional, defaults to public RPC)",
+      "value": "https://mainnet.base.org"
+    }
+  },
+  "dockerfile": "./Dockerfile",
+  "readme": "./README.md",
+  "categories": ["BLOCKCHAIN", "DATA_VERIFICATION", "AI_AGENTS"],
+  "title": "On-Chain Attestation",
+  "description": "Create cryptographic proofs of data on Solana and Base blockchains. Provides verifiable, immutable attestations for any Actor output, data, or workflow.",
+  "shortDescription": "Blockchain attestation service for verifiable data provenance"
+}

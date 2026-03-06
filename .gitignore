@@ -26,7 +26,7 @@ wheels/
 # Apify
 apify_storage/
 storage/
-.actor/
+# .actor/ - We need this for Apify Actor configuration!
 
 # Environment variables
 .env

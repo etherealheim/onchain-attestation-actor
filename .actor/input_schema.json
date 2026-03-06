@@ -1,0 +1,90 @@
+{
+  "title": "On-Chain Attestation Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "chain": {
+      "title": "Blockchain",
+      "type": "string",
+      "description": "Which blockchain to write the attestation to",
+      "enum": ["solana", "base"],
+      "enumTitles": ["Solana (fastest, cheapest)", "Base (EAS, compliance-focused)"],
+      "default": "solana",
+      "editor": "select"
+    },
+    "data": {
+      "title": "Data to Attest",
+      "type": "object",
+      "description": "The data to create an attestation for. Can be any JSON structure. Will be hashed (not stored on-chain in full).",
+      "editor": "json"
+    },
+    "metadata": {
+      "title": "Metadata",
+      "type": "object",
+      "description": "Additional context about the data (optional)",
+      "editor": "json",
+      "properties": {
+        "actor_id": {
+          "type": "string",
+          "title": "Actor ID",
+          "description": "The Apify Actor that produced this data"
+        },
+        "run_id": {
+          "type": "string",
+          "title": "Run ID",
+          "description": "The specific Actor run ID"
+        },
+        "source_url": {
+          "type": "string",
+          "title": "Source URL",
+          "description": "The URL this data was scraped from"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Human-readable description of this attestation"
+        },
+        "custom": {
+          "type": "object",
+          "title": "Custom Metadata",
+          "description": "Any additional custom fields",
+          "editor": "json"
+        }
+      }
+    },
+    "options": {
+      "title": "Options",
+      "type": "object",
+      "description": "Attestation options",
+      "editor": "json",
+      "properties": {
+        "verification_url": {
+          "type": "boolean",
+          "title": "Generate Verification URL",
+          "description": "Include a verification URL in the output",
+          "default": true
+        },
+        "store_full_data": {
+          "type": "boolean",
+          "title": "Store Full Data in Apify",
+          "description": "Store the full data in Apify Key-Value store (in addition to on-chain hash)",
+          "default": true
+        }
+      }
+    },
+    "verify": {
+      "title": "Verification Mode",
+      "type": "boolean",
+      "description": "Set to true to verify an existing attestation instead of creating a new one",
+      "default": false,
+      "editor": "checkbox"
+    },
+    "tx_hash": {
+      "title": "Transaction Hash (for verification)",
+      "type": "string",
+      "description": "The blockchain transaction hash to verify (only used when verify=true)",
+      "editor": "textfield"
+    }
+  },
+  "required": ["chain", "data"]
+}
