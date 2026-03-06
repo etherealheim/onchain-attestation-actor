@@ -113,19 +113,23 @@ class SolanaAdapter(ChainAdapter):
                 )
                 transaction = Transaction([wallet.keypair], message, recent_blockhash)
 
-                # Send transaction with skip_preflight to avoid blockhash timing issues
-                opts = TxOpts(skip_preflight=True, preflight_commitment=Confirmed)
+                # Send transaction with skip_preflight and auto-confirm
+                # skip_confirmation=False means it will wait for confirmation
+                opts = TxOpts(
+                    skip_preflight=True,
+                    preflight_commitment=Confirmed,
+                    skip_confirmation=False,  # Wait for confirmation automatically
+                )
                 result = await self.client.send_transaction(transaction, opts=opts)
 
-                # result.value is already a Signature object
+                # result.value is a Signature object
                 tx_signature = result.value
                 tx_signature_str = str(tx_signature)
 
-                # Wait for confirmation (confirm_transaction expects Signature object)
-                await self.client.confirm_transaction(tx_signature, Confirmed)
-
                 # Get transaction details for block number
-                tx_info = await self.client.get_transaction(tx_signature, Confirmed)
+                tx_info = await self.client.get_transaction(
+                    tx_signature, commitment=Confirmed
+                )
                 block_number = tx_info.value.slot if tx_info.value else None
 
                 # Success - break out of retry loop
