@@ -130,3 +130,9 @@ async def main():
         except Exception as e:
             Actor.log.error(f"❌ Error: {str(e)}")
             await Actor.fail(status_message=str(e))
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())
