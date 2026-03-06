@@ -1,33 +1,17 @@
 {
   "title": "On-Chain Attestation",
-  "description": "Create cryptographic proofs of your data on Solana or Base blockchain. The data is hashed with SHA-256 and the hash is written on-chain as an immutable, timestamped record.",
+  "description": "Create cryptographic proofs of your data on Solana blockchain. The data is hashed with SHA-256 and the hash is written on-chain as an immutable, timestamped record.",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
-    "chain": {
-      "title": "Blockchain",
-      "type": "string",
-      "description": "Which blockchain to write the attestation to.\n\n**Solana**: Fastest (~1 second), cheapest (~$0.001)\n**Base**: Better for compliance use cases (~$0.02, 2-5 seconds)",
-      "enum": ["solana", "base"],
-      "enumTitles": ["Solana (Fast & Cheap)", "Base (Compliance-Focused)"],
-      "default": "solana",
-      "editor": "select"
-    },
     "solana_private_key": {
       "title": "Solana Private Key",
       "type": "string",
-      "description": "Your Solana wallet private key (base58 encoded). Required for Solana attestations. The wallet needs SOL for transaction fees (~0.000005 SOL per attestation).",
+      "description": "Your Solana wallet private key (base58 encoded). The wallet needs SOL for transaction fees (~0.000005 SOL per attestation).",
       "editor": "textfield",
       "isSecret": true,
       "sectionCaption": "Wallet Configuration",
-      "sectionDescription": "Provide your blockchain wallet credentials. These are used to sign and pay for attestation transactions. Your keys are never stored or logged."
-    },
-    "base_private_key": {
-      "title": "Base Private Key",
-      "type": "string",
-      "description": "Your Base/Ethereum wallet private key (hex format, with or without 0x prefix). Required for Base attestations. The wallet needs ETH for gas fees (~0.00001 ETH per attestation).",
-      "editor": "textfield",
-      "isSecret": true
+      "sectionDescription": "Provide your Solana wallet credentials. Used to sign and pay for attestation transactions. Your keys are never stored or logged."
     },
     "solana_rpc_url": {
       "title": "Solana RPC URL (Optional)",
@@ -36,12 +20,6 @@
       "editor": "textfield",
       "sectionCaption": "Advanced Settings",
       "sectionDescription": "Optional settings for power users. Leave empty to use defaults."
-    },
-    "base_rpc_url": {
-      "title": "Base RPC URL (Optional)",
-      "type": "string",
-      "description": "Custom Base RPC endpoint. Leave empty to use the default public endpoint.",
-      "editor": "textfield"
     },
     "data": {
       "title": "Data to Attest",
@@ -53,39 +31,9 @@
         "price": 49.99,
         "scraped_at": "2026-03-06T14:30:00Z",
         "source": "https://example.com/product/123"
-      }
-    },
-    "description": {
-      "title": "Description",
-      "type": "string",
-      "description": "A human-readable description of what this attestation is for (e.g., 'Product pricing data from Amazon')",
-      "editor": "textarea",
-      "sectionCaption": "Metadata (Optional)",
-      "sectionDescription": "Add context about your attestation. This metadata is included in the on-chain record."
-    },
-    "source_url": {
-      "title": "Source URL",
-      "type": "string",
-      "description": "The URL where this data was scraped from (e.g., 'https://amazon.com/product/xyz')",
-      "editor": "textfield"
-    },
-    "actor_id": {
-      "title": "Actor ID",
-      "type": "string",
-      "description": "The Apify Actor that produced this data (e.g., 'apify/amazon-scraper')",
-      "editor": "textfield"
-    },
-    "run_id": {
-      "title": "Run ID",
-      "type": "string",
-      "description": "The specific Actor run ID that produced this data",
-      "editor": "textfield"
-    },
-    "custom_metadata": {
-      "title": "Custom Metadata",
-      "type": "object",
-      "description": "Any additional custom fields you want to include in the attestation record",
-      "editor": "json"
+      },
+      "sectionCaption": "Data",
+      "sectionDescription": "The data to create a proof for. For webhook mode, this is auto-populated from the source Actor run."
     },
     "private_mode": {
       "title": "Private attestation",
@@ -112,9 +60,9 @@
     "tx_hash": {
       "title": "Transaction Hash to Verify",
       "type": "string",
-      "description": "The blockchain transaction hash of the attestation you want to verify. Required when verification mode is enabled.",
+      "description": "The Solana transaction signature of the attestation you want to verify. Required when verification mode is enabled.",
       "editor": "textfield"
     }
   },
-  "required": ["chain"]
+  "required": ["solana_private_key"]
 }

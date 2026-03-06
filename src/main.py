@@ -4,8 +4,8 @@ import os
 import httpx
 from apify import Actor
 from src.attestation import sha256_hash
-from src.chains import SolanaAdapter, BaseAdapter
-from src.wallet import SolanaWallet, EVMWallet
+from src.chains import SolanaAdapter
+from src.wallet import SolanaWallet
 from src.verification import verify_attestation
 
 
@@ -161,9 +161,6 @@ async def main():
                 # Direct input mode - data is provided directly
                 data = actor_input.get("data", {})
 
-            # Extract required fields
-            chain = actor_input.get("chain", "solana")
-
             if not data:
                 raise ValueError(
                     "'data' field is required (or webhook payload with run data)"
@@ -181,9 +178,8 @@ async def main():
 
                 result = await verify_attestation(
                     tx_hash=tx_hash,
-                    chain=chain,
                     original_data=data,
-                    rpc_url=os.getenv(f"{chain.upper()}_RPC_URL"),
+                    rpc_url=os.getenv("SOLANA_RPC_URL"),
                 )
 
                 await Actor.push_data(result.dict())
@@ -191,7 +187,7 @@ async def main():
                 return
 
             # Create attestation mode
-            Actor.log.info(f"Creating attestation on {chain}")
+            Actor.log.info("Creating attestation on Solana")
 
             # Hash the data
             data_hash = sha256_hash(data)
@@ -276,42 +272,19 @@ async def main():
                     onchain_metadata["run"] = private_metadata["runId"]
 
             # Get wallet credentials from input (with fallback to environment variables)
-            if chain == "solana":
-                private_key = actor_input.get("solana_private_key") or os.getenv(
-                    "SOLANA_PRIVATE_KEY"
-                )
-                if not private_key:
-                    raise ValueError(
-                        "Solana private key is required. Please provide 'solana_private_key' in the input."
-                    )
-
-                wallet = SolanaWallet(private_key)
-                rpc_url = actor_input.get("solana_rpc_url") or os.getenv(
-                    "SOLANA_RPC_URL"
-                )
-                adapter = SolanaAdapter(rpc_url)
-
-                Actor.log.info(f"Using Solana wallet: {wallet.address}")
-
-            elif chain == "base":
-                private_key = actor_input.get("base_private_key") or os.getenv(
-                    "BASE_PRIVATE_KEY"
-                )
-                if not private_key:
-                    raise ValueError(
-                        "Base private key is required. Please provide 'base_private_key' in the input."
-                    )
-
-                wallet = EVMWallet(private_key)
-                rpc_url = actor_input.get("base_rpc_url") or os.getenv("BASE_RPC_URL")
-                adapter = BaseAdapter(rpc_url)
-
-                Actor.log.info(f"Using Base wallet: {wallet.address}")
-
-            else:
+            private_key = actor_input.get("solana_private_key") or os.getenv(
+                "SOLANA_PRIVATE_KEY"
+            )
+            if not private_key:
                 raise ValueError(
-                    f"Unsupported chain: {chain}. Must be 'solana' or 'base'."
+                    "Solana private key is required. Please provide 'solana_private_key' in the input."
                 )
+
+            wallet = SolanaWallet(private_key)
+            rpc_url = actor_input.get("solana_rpc_url") or os.getenv("SOLANA_RPC_URL")
+            adapter = SolanaAdapter(rpc_url)
+
+            Actor.log.info(f"Using Solana wallet: {wallet.address}")
 
             # Create attestation
             Actor.log.info("Submitting attestation to blockchain...")
@@ -332,7 +305,7 @@ async def main():
                 stored_record = {
                     "attestation_id": attestation.attestation_id,
                     "tx_hash": attestation.tx_hash,
-                    "chain": chain,
+                    "chain": "solana",
                     "explorer_url": attestation.explorer_url,
                     "data_hash": data_hash,
                     "timestamp": attestation.timestamp,

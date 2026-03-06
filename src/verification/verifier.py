@@ -1,14 +1,13 @@
 """Attestation verification utilities."""
 
 from typing import Dict, Any, Optional
-from ..attestation.schema import VerificationResult, AttestationOutput
-from ..attestation.hasher import verify_hash
-from ..chains import SolanaAdapter, BaseAdapter
+from ..attestation.schema import VerificationResult
+from ..attestation.hasher import verify_hash, sha256_hash
+from ..chains import SolanaAdapter
 
 
 async def verify_attestation(
     tx_hash: str,
-    chain: str,
     original_data: Dict[str, Any],
     rpc_url: Optional[str] = None,
 ) -> VerificationResult:
@@ -16,34 +15,23 @@ async def verify_attestation(
     Verify an attestation by comparing on-chain data with provided data.
 
     Args:
-        tx_hash: Transaction hash to verify
-        chain: Blockchain ("solana" or "base")
+        tx_hash: Solana transaction signature to verify
         original_data: The original data that was attested
-        rpc_url: Optional RPC URL for the chain
+        rpc_url: Optional RPC URL for Solana
 
     Returns:
         VerificationResult with verification status
     """
     try:
-        # Select appropriate adapter
-        if chain == "solana":
-            adapter = SolanaAdapter(rpc_url)
-        elif chain == "base":
-            adapter = BaseAdapter(rpc_url)
-        else:
-            return VerificationResult(
-                verified=False, error=f"Unsupported chain: {chain}"
-            )
+        adapter = SolanaAdapter(rpc_url)
 
         # Hash the provided data
-        from ..attestation.hasher import sha256_hash
-
         expected_hash = sha256_hash(original_data)
 
         # Verify on-chain
         is_valid = await adapter.verify(tx_hash, expected_hash)
 
-        # Close connection if adapter has close method (Solana)
+        # Close connection
         if hasattr(adapter, "close"):
             await adapter.close()
 
@@ -52,7 +40,7 @@ async def verify_attestation(
                 verified=True,
                 details={
                     "tx_hash": tx_hash,
-                    "chain": chain,
+                    "chain": "solana",
                     "data_hash": expected_hash,
                     "message": "Attestation verified successfully",
                 },
@@ -68,5 +56,5 @@ async def verify_attestation(
         return VerificationResult(
             verified=False,
             error=f"Verification failed: {str(e)}",
-            details={"tx_hash": tx_hash, "chain": chain},
+            details={"tx_hash": tx_hash},
         )
