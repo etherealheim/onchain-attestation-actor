@@ -2,11 +2,13 @@
 
 import json
 import uuid
+import asyncio
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 from solana.rpc.async_api import AsyncClient
-from solana.rpc.commitment import Confirmed
+from solana.rpc.commitment import Confirmed, Finalized
+from solana.rpc.types import TxOpts
 from solders.transaction import Transaction
 from solders.message import Message
 from solders.instruction import Instruction, AccountMeta
@@ -21,6 +23,12 @@ from ..wallet.solana_wallet import SolanaWallet
 # Memo program ID
 MEMO_PROGRAM_ID = Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
 
+# Default RPC endpoints to try (in order of preference)
+DEFAULT_RPC_ENDPOINTS = [
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-api.projectserum.com",
+]
+
 
 class SolanaAdapter(ChainAdapter):
     """Solana attestation adapter using transaction memos."""
@@ -32,7 +40,7 @@ class SolanaAdapter(ChainAdapter):
         Args:
             rpc_url: Solana RPC endpoint (defaults to public mainnet)
         """
-        super().__init__(rpc_url or "https://api.mainnet-beta.solana.com")
+        super().__init__(rpc_url or DEFAULT_RPC_ENDPOINTS[0])
         self.client = AsyncClient(self.rpc_url)
 
     async def attest(
@@ -77,30 +85,69 @@ class SolanaAdapter(ChainAdapter):
             program_id=MEMO_PROGRAM_ID, accounts=[], data=memo_text.encode("utf-8")
         )
 
-        # Get recent blockhash
-        blockhash_resp = await self.client.get_latest_blockhash(Confirmed)
-        recent_blockhash = blockhash_resp.value.blockhash
+        # Check wallet balance before attempting transaction
+        balance_resp = await self.client.get_balance(wallet.keypair.pubkey())
+        balance_lamports = balance_resp.value
+        balance_sol = balance_lamports / 1_000_000_000
 
-        # Create and sign transaction
-        message = Message.new_with_blockhash(
-            [memo_instruction], wallet.keypair.pubkey(), recent_blockhash
-        )
-        transaction = Transaction([wallet.keypair], message, recent_blockhash)
+        if balance_lamports < 5000:  # Minimum for a transaction (~0.000005 SOL)
+            raise RuntimeError(
+                f"Insufficient SOL balance. Wallet {wallet.address} has {balance_sol:.9f} SOL. "
+                f"Please fund the wallet with at least 0.01 SOL to cover transaction fees."
+            )
 
-        # Send transaction
-        try:
-            result = await self.client.send_transaction(transaction)
-            tx_signature = str(result.value)
+        # Retry logic for blockhash issues
+        max_retries = 3
+        last_error = None
 
-            # Wait for confirmation
-            await self.client.confirm_transaction(tx_signature, Confirmed)
+        for attempt in range(max_retries):
+            try:
+                # Get fresh blockhash with Finalized commitment (more reliable)
+                blockhash_resp = await self.client.get_latest_blockhash(Finalized)
+                recent_blockhash = blockhash_resp.value.blockhash
 
-            # Get transaction details for block number
-            tx_info = await self.client.get_transaction(tx_signature, Confirmed)
-            block_number = tx_info.value.slot if tx_info.value else None
+                # Create and sign transaction
+                message = Message.new_with_blockhash(
+                    [memo_instruction], wallet.keypair.pubkey(), recent_blockhash
+                )
+                transaction = Transaction([wallet.keypair], message, recent_blockhash)
 
-        except Exception as e:
-            raise RuntimeError(f"Failed to send Solana transaction: {e}")
+                # Send transaction with skip_preflight to avoid blockhash timing issues
+                opts = TxOpts(skip_preflight=True, preflight_commitment=Confirmed)
+                result = await self.client.send_transaction(transaction, opts=opts)
+                tx_signature = str(result.value)
+
+                # Wait for confirmation
+                await self.client.confirm_transaction(tx_signature, Confirmed)
+
+                # Get transaction details for block number
+                tx_info = await self.client.get_transaction(tx_signature, Confirmed)
+                block_number = tx_info.value.slot if tx_info.value else None
+
+                # Success - break out of retry loop
+                break
+
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+
+                # Check if it's a blockhash error worth retrying
+                if (
+                    "Blockhash not found" in error_str
+                    or "blockhash" in error_str.lower()
+                ):
+                    if attempt < max_retries - 1:
+                        # Wait a bit before retrying
+                        await asyncio.sleep(1)
+                        continue
+
+                # For other errors, don't retry
+                raise RuntimeError(f"Failed to send Solana transaction: {e}")
+        else:
+            # All retries exhausted
+            raise RuntimeError(
+                f"Failed to send Solana transaction after {max_retries} attempts: {last_error}"
+            )
 
         # Generate attestation ID
         attestation_id = f"att_{uuid.uuid4().hex[:12]}"
