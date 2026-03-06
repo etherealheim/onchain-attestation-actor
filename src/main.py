@@ -59,21 +59,51 @@ async def main():
                     or resource.get("actorTaskId")
                 )
 
+                # Extract useful context from resource
+                default_dataset_id = resource.get("defaultDatasetId")
+                build_number = resource.get("buildNumber")
+                started_at = resource.get("startedAt")
+                finished_at = resource.get("finishedAt")
+                status = resource.get("status")
+
+                # Get stats if available
+                stats = resource.get("stats", {})
+                item_count = stats.get("outputItems") or stats.get("datasetItems", 0)
+
                 Actor.log.info(f"Source Actor: {source_actor_id}, Run: {source_run_id}")
 
                 # Fetch the actual data from the source run
                 # APIFY_TOKEN is automatically available when running on Apify platform
                 data = await fetch_actor_run_data(source_run_id)
 
-                Actor.log.info(
-                    f"Fetched {len(data) if isinstance(data, list) else 1} items from source run"
+                # Count items if not from stats
+                if not item_count and isinstance(data, list):
+                    item_count = len(data)
+
+                Actor.log.info(f"Fetched {item_count} items from source run")
+
+                # Build comprehensive metadata for on-chain record
+                # Include data URL so anyone can verify the attestation
+                data_url = (
+                    f"https://api.apify.com/v2/datasets/{default_dataset_id}/items"
+                    if default_dataset_id
+                    else None
+                )
+                run_url = (
+                    f"https://console.apify.com/actors/runs/{source_run_id}"
+                    if source_run_id
+                    else None
                 )
 
-                # Auto-populate metadata from webhook
-                if not actor_input.get("actor_id"):
-                    actor_input["actor_id"] = source_actor_id
-                if not actor_input.get("run_id"):
-                    actor_input["run_id"] = source_run_id
+                # Auto-populate metadata with useful context
+                actor_input["run_id"] = source_run_id
+                actor_input["actor_id"] = source_actor_id
+                if data_url:
+                    actor_input["data_url"] = data_url
+                if run_url:
+                    actor_input["run_url"] = run_url
+                if item_count:
+                    actor_input["item_count"] = item_count
 
             else:
                 # Direct input mode - data is provided directly
@@ -115,18 +145,28 @@ async def main():
             data_hash = sha256_hash(data)
             Actor.log.info(f"Data hash: {data_hash}")
 
-            # Build metadata from flat input structure
+            # Build metadata - prioritize useful, verifiable info
             metadata = {}
-            if actor_input.get("actor_id"):
-                metadata["actor_id"] = actor_input["actor_id"]
-            if actor_input.get("run_id"):
-                metadata["run_id"] = actor_input["run_id"]
+
+            # Data URL is most important - allows anyone to verify the attestation
+            if actor_input.get("data_url"):
+                metadata["data"] = actor_input["data_url"]
+
+            # Item count provides context
+            if actor_input.get("item_count"):
+                metadata["items"] = actor_input["item_count"]
+
+            # Source URL if provided (for direct input mode)
             if actor_input.get("source_url"):
-                metadata["source_url"] = actor_input["source_url"]
+                metadata["src"] = actor_input["source_url"]
+
+            # Short description
             if actor_input.get("description"):
-                metadata["description"] = actor_input["description"]
-            if actor_input.get("custom_metadata"):
-                metadata["custom"] = actor_input["custom_metadata"]
+                metadata["desc"] = actor_input["description"]
+
+            # Run reference (shortened to save space)
+            if actor_input.get("run_id"):
+                metadata["run"] = actor_input["run_id"]
 
             # Get wallet credentials from input (with fallback to environment variables)
             if chain == "solana":
