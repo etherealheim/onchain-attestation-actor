@@ -197,65 +197,83 @@ async def main():
             data_hash = sha256_hash(data)
             Actor.log.info(f"Data hash: {data_hash}")
 
-            # Build metadata - prioritize useful, verifiable info
-            metadata = {}
+            # Check privacy mode - default is private (only hash on-chain)
+            private_mode = actor_input.get("private_mode", True)
+            Actor.log.info(
+                f"Privacy mode: {'PRIVATE (hash only)' if private_mode else 'PUBLIC (full metadata)'}"
+            )
 
-            # Origin/provenance - where did this data come from?
-            # e.g., "apify/instagram-scraper" - human-readable Actor name
+            # Build PRIVATE metadata (stored in Apify, not on-chain)
+            private_metadata = {}
+
+            # Origin/provenance
             if actor_input.get("origin"):
-                metadata["origin"] = actor_input["origin"]
+                private_metadata["origin"] = actor_input["origin"]
 
-            # Source input - HOW was the data collected?
-            # Extract key fields and hash the full input for verification
+            # Source input details
             source_input = actor_input.get("source_input")
             if source_input:
-                # Hash the full input so it can be verified later
                 input_hash = sha256_hash(source_input)
-                # Remove the "sha256:" prefix to save space, just keep first 16 chars
-                metadata["inputHash"] = input_hash[7:23]
+                private_metadata["inputHash"] = input_hash
+                private_metadata["input"] = source_input  # Full input stored privately
 
-                # Extract commonly useful fields from scraper inputs
-                # These tell us WHAT was scraped (profile, search query, URL, etc.)
+                # Extract target field
                 target_fields = [
                     "username",
-                    "usernames",  # Instagram, Twitter
+                    "usernames",
                     "url",
                     "urls",
-                    "startUrls",  # Generic
+                    "startUrls",
                     "searchQuery",
                     "search",
-                    "query",  # Search-based
+                    "query",
                     "hashtag",
-                    "hashtags",  # Instagram, Twitter
+                    "hashtags",
                     "profileUrl",
-                    "profileUrls",  # Social media
+                    "profileUrls",
                 ]
 
                 for field in target_fields:
                     if field in source_input and source_input[field]:
                         value = source_input[field]
-                        # If it's a list, join first few items
                         if isinstance(value, list):
-                            value = value[:3]  # Max 3 items
+                            value = value[:3]
                             if len(value) == 1:
                                 value = value[0]
-                        # Truncate long strings
-                        if isinstance(value, str) and len(value) > 50:
-                            value = value[:47] + "..."
-                        metadata["target"] = value
-                        break  # Only include first matching field
+                        if isinstance(value, str) and len(value) > 100:
+                            value = value[:97] + "..."
+                        private_metadata["target"] = value
+                        break
 
-            # Data URL - allows anyone to verify the attestation
+            # Data URL
             if actor_input.get("data_url"):
-                metadata["data"] = actor_input["data_url"]
+                private_metadata["dataUrl"] = actor_input["data_url"]
 
-            # Item count provides context
+            # Item count
             if actor_input.get("item_count"):
-                metadata["items"] = actor_input["item_count"]
+                private_metadata["items"] = actor_input["item_count"]
 
-            # Run reference for traceability
+            # Run ID
             if actor_input.get("run_id"):
-                metadata["run"] = actor_input["run_id"]
+                private_metadata["runId"] = actor_input["run_id"]
+
+            # Build ON-CHAIN metadata (what goes to blockchain)
+            if private_mode:
+                # PRIVATE: Only hash goes on-chain, nothing else
+                onchain_metadata = {}
+            else:
+                # PUBLIC: Include origin, target, data URL on-chain
+                onchain_metadata = {}
+                if private_metadata.get("origin"):
+                    onchain_metadata["origin"] = private_metadata["origin"]
+                if private_metadata.get("target"):
+                    onchain_metadata["target"] = private_metadata["target"]
+                if private_metadata.get("dataUrl"):
+                    onchain_metadata["data"] = private_metadata["dataUrl"]
+                if private_metadata.get("items"):
+                    onchain_metadata["items"] = private_metadata["items"]
+                if private_metadata.get("runId"):
+                    onchain_metadata["run"] = private_metadata["runId"]
 
             # Get wallet credentials from input (with fallback to environment variables)
             if chain == "solana":
@@ -297,7 +315,7 @@ async def main():
 
             # Create attestation
             Actor.log.info("Submitting attestation to blockchain...")
-            attestation = await adapter.attest(data_hash, metadata, wallet)
+            attestation = await adapter.attest(data_hash, onchain_metadata, wallet)
 
             # Close connection if adapter has close method (Solana)
             if hasattr(adapter, "close"):
@@ -306,25 +324,61 @@ async def main():
             Actor.log.info(f"✅ Attestation created: {attestation.tx_hash}")
             Actor.log.info(f"🔗 Explorer URL: {attestation.explorer_url}")
 
-            # Store full data in Apify key-value store if requested
+            # Store data in Apify key-value store
             store_full_data = actor_input.get("store_full_data", True)
             if store_full_data:
+                # Build the stored record with PRIVATE metadata
+                # This is what you share with buyers/auditors for verification
+                stored_record = {
+                    "attestation_id": attestation.attestation_id,
+                    "tx_hash": attestation.tx_hash,
+                    "chain": chain,
+                    "explorer_url": attestation.explorer_url,
+                    "data_hash": data_hash,
+                    "timestamp": attestation.timestamp,
+                    "attestor": attestation.attestor_address,
+                    # Private metadata (not on blockchain)
+                    "private_metadata": private_metadata,
+                    # The actual data
+                    "data": data,
+                    # What mode was used
+                    "private_mode": private_mode,
+                }
+
                 await Actor.set_value(
                     f"attestation_{attestation.attestation_id}",
-                    {"data": data, "attestation": attestation.dict()},
+                    stored_record,
                 )
 
                 # Add URL to output
+                kv_store_id = Actor.get_env().get("default_key_value_store_id")
                 attestation.apify_data_url = (
                     f"https://api.apify.com/v2/key-value-stores/"
-                    f"{Actor.get_env().get('default_key_value_store_id')}"
+                    f"{kv_store_id}"
                     f"/records/attestation_{attestation.attestation_id}"
                 )
 
-            # Output the attestation
-            await Actor.push_data(attestation.dict())
+                Actor.log.info(
+                    f"📦 Stored private record: attestation_{attestation.attestation_id}"
+                )
 
-            Actor.log.info("🎉 Attestation complete!")
+            # Build output - include private metadata summary for the user
+            output = attestation.dict()
+            output["private_mode"] = private_mode
+            output["private_metadata"] = private_metadata
+
+            # Output the attestation
+            await Actor.push_data(output)
+
+            if private_mode:
+                Actor.log.info(
+                    "🔒 PRIVATE attestation complete - only hash is on-chain"
+                )
+                Actor.log.info(
+                    f"📋 Share attestation ID with buyers: {attestation.attestation_id}"
+                )
+            else:
+                Actor.log.info("🌐 PUBLIC attestation complete - metadata is on-chain")
 
         except Exception as e:
             Actor.log.error(f"❌ Error: {str(e)}")

@@ -87,13 +87,19 @@
       "description": "Any additional custom fields you want to include in the attestation record",
       "editor": "json"
     },
+    "private_mode": {
+      "title": "Private attestation",
+      "type": "boolean",
+      "description": "When enabled, only the hash goes on-chain. Origin, target, and metadata stay private in Apify. Share the attestation ID with buyers/auditors to let them verify.",
+      "default": true,
+      "sectionCaption": "Privacy Options",
+      "sectionDescription": "Control what goes on-chain vs stays private."
+    },
     "store_full_data": {
       "title": "Store full data in Apify",
       "type": "boolean",
-      "description": "Save the complete data in Apify's Key-Value store alongside the on-chain hash. Useful for later verification.",
-      "default": true,
-      "sectionCaption": "Options",
-      "sectionDescription": "Configure how the attestation is stored and processed."
+      "description": "Save the complete data in Apify's Key-Value store alongside the on-chain hash. Required for later verification.",
+      "default": true
     },
     "verify_mode": {
       "title": "Verification mode",
