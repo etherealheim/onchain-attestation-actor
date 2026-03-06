@@ -2,10 +2,10 @@
 
 import os
 from apify import Actor
-from attestation import sha256_hash
-from chains import SolanaAdapter, BaseAdapter
-from wallet import SolanaWallet, EVMWallet
-from verification import verify_attestation
+from src.attestation import sha256_hash
+from src.chains import SolanaAdapter, BaseAdapter
+from src.wallet import SolanaWallet, EVMWallet
+from src.verification import verify_attestation
 
 
 async def main():
