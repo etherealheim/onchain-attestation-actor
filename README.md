@@ -264,14 +264,30 @@ To verify an attestation:
 
 ## Environment Variables
 
-The Actor requires wallet credentials stored as Apify secrets:
+The Actor requires wallet credentials. **Important:** You must set these as secrets in the Apify Console.
+
+### Required Secrets (set in Apify Console → Actor Settings → Environment Variables)
 
 ```bash
 SOLANA_PRIVATE_KEY=base58_encoded_private_key
 BASE_PRIVATE_KEY=0x_prefixed_hex_private_key
-SOLANA_RPC_URL=https://api.mainnet-beta.solana.com  # optional, uses public RPC by default
-BASE_RPC_URL=https://mainnet.base.org               # optional
 ```
+
+**How to set secrets in Apify:**
+1. Go to your Actor in Apify Console
+2. Navigate to Settings → Environment Variables
+3. Click "Add Secret"
+4. Add `SOLANA_PRIVATE_KEY` with your base58-encoded Solana private key
+5. Add `BASE_PRIVATE_KEY` with your 0x-prefixed hex EVM private key
+
+### Optional RPC URLs (already configured with defaults)
+
+```bash
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com  # default
+BASE_RPC_URL=https://mainnet.base.org               # default
+```
+
+These are already set in the Actor configuration and don't need to be changed unless you want to use a custom RPC endpoint.
 
 ## Cost Structure
 

@@ -104,12 +104,20 @@ apify push
 
 ### 4. Configure Secrets
 
+**IMPORTANT:** You must configure wallet private keys in Apify Console.
+
 In Apify Console:
-1. Go to your Actor
-2. Settings → Environment Variables
-3. Add secrets:
-   - `SOLANA_PRIVATE_KEY` (base58-encoded)
-   - `BASE_PRIVATE_KEY` (0x-prefixed hex)
+1. Go to your Actor → Settings
+2. Click on "Environment Variables" tab
+3. Click "Add Secret" button
+4. Add these two secrets:
+   - Name: `SOLANA_PRIVATE_KEY`, Value: your base58-encoded Solana private key
+   - Name: `BASE_PRIVATE_KEY`, Value: your 0x-prefixed hex EVM private key
+
+**Security Note:** 
+- These are stored as encrypted secrets in Apify
+- They are NOT committed to the repository
+- The Actor reads them from environment variables at runtime
 
 ### 5. Test Run
 
