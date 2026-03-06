@@ -1,114 +1,83 @@
 {
-  "title": "On-Chain Attestation Input",
+  "title": "On-Chain Attestation",
+  "description": "Create cryptographic proofs of your data on Solana or Base blockchain. The data is hashed with SHA-256 and the hash is written on-chain as an immutable, timestamped record.",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "chain": {
       "title": "Blockchain",
       "type": "string",
-      "description": "Which blockchain to write the attestation to. **Solana** is fastest (~$0.001, <1s), **Base** is best for compliance (~$0.02, 2-5s).",
+      "description": "Which blockchain to write the attestation to.\n\n**Solana**: Fastest (~1 second), cheapest (~$0.001)\n**Base**: Better for compliance use cases (~$0.02, 2-5 seconds)",
       "enum": ["solana", "base"],
-      "enumTitles": ["⚡ Solana (Fastest, Cheapest)", "🔒 Base (Compliance-Focused)"],
+      "enumTitles": ["Solana (Fast & Cheap)", "Base (Compliance-Focused)"],
       "default": "solana",
       "editor": "select"
     },
     "data": {
       "title": "Data to Attest",
       "type": "object",
-      "description": "The data you want to create an on-chain proof for. This will be hashed with SHA-256 (only the hash goes on-chain, not the full data).",
+      "description": "The JSON data you want to create a proof for. Only the SHA-256 hash goes on-chain (not the full data). You can attest any JSON structure.",
       "editor": "json",
       "prefill": {
-        "example": "Your data here",
-        "timestamp": "2026-03-06T14:30:00Z",
-        "source": "https://example.com"
+        "product": "Example Product",
+        "price": 49.99,
+        "scraped_at": "2026-03-06T14:30:00Z",
+        "source": "https://example.com/product/123"
       }
     },
-    "sectionCaption_metadata": {
-      "title": "Metadata (Optional)",
-      "type": "null",
-      "sectionCaption": "📋 Metadata & Options",
-      "sectionDescription": "Add context about your attestation and configure how it's stored"
+    "description": {
+      "title": "Description",
+      "type": "string",
+      "description": "A human-readable description of what this attestation is for (e.g., 'Product pricing data from Amazon')",
+      "editor": "textarea",
+      "sectionCaption": "Metadata (Optional)",
+      "sectionDescription": "Add context about your attestation. This metadata is included in the on-chain record."
+    },
+    "source_url": {
+      "title": "Source URL",
+      "type": "string",
+      "description": "The URL where this data was scraped from (e.g., 'https://amazon.com/product/xyz')",
+      "editor": "textfield"
     },
     "actor_id": {
       "title": "Actor ID",
       "type": "string",
-      "description": "The Apify Actor that produced this data (e.g., 'apify/google-search-scraper')",
-      "editor": "textfield",
-      "prefill": "",
-      "nullable": true
+      "description": "The Apify Actor that produced this data (e.g., 'apify/amazon-scraper')",
+      "editor": "textfield"
     },
     "run_id": {
       "title": "Run ID",
       "type": "string",
       "description": "The specific Actor run ID that produced this data",
-      "editor": "textfield",
-      "prefill": "",
-      "nullable": true
-    },
-    "source_url": {
-      "title": "Source URL",
-      "type": "string",
-      "description": "The URL where this data was scraped from",
-      "editor": "textfield",
-      "prefill": "",
-      "pattern": "^https?://.*",
-      "nullable": true
-    },
-    "description": {
-      "title": "Description",
-      "type": "string",
-      "description": "A human-readable description of what this attestation is for",
-      "editor": "textarea",
-      "prefill": "",
-      "nullable": true
+      "editor": "textfield"
     },
     "custom_metadata": {
       "title": "Custom Metadata",
       "type": "object",
-      "description": "Any additional custom fields you want to include (JSON object)",
-      "editor": "json",
-      "prefill": {},
-      "nullable": true
-    },
-    "sectionCaption_options": {
-      "title": "Options",
-      "type": "null",
-      "sectionCaption": "⚙️ Advanced Options"
-    },
-    "generate_verification_url": {
-      "title": "Generate Verification URL",
-      "type": "boolean",
-      "description": "Include a verification URL in the output for easy verification",
-      "default": true,
-      "groupCaption": "Output Options"
+      "description": "Any additional custom fields you want to include in the attestation record",
+      "editor": "json"
     },
     "store_full_data": {
-      "title": "Store Full Data in Apify",
+      "title": "Store full data in Apify",
       "type": "boolean",
-      "description": "Store the complete data in Apify's Key-Value store (in addition to on-chain hash). Useful for later verification.",
-      "default": true
-    },
-    "sectionCaption_verify": {
-      "title": "Verification Mode",
-      "type": "null",
-      "sectionCaption": "🔍 Verification Mode (Advanced)",
-      "sectionDescription": "Use this to verify an existing attestation instead of creating a new one"
+      "description": "Save the complete data in Apify's Key-Value store alongside the on-chain hash. Useful for later verification.",
+      "default": true,
+      "sectionCaption": "Options",
+      "sectionDescription": "Configure how the attestation is stored and processed."
     },
     "verify_mode": {
-      "title": "Enable Verification Mode",
+      "title": "Verification mode",
       "type": "boolean",
-      "description": "Check this to verify an existing attestation instead of creating a new one",
+      "description": "Enable this to verify an existing attestation instead of creating a new one. You'll need to provide the transaction hash below.",
       "default": false,
-      "editor": "checkbox",
-      "groupCaption": "Verification"
+      "sectionCaption": "Verification Mode",
+      "sectionDescription": "Use this section to verify an existing attestation by comparing the on-chain hash with your data."
     },
     "tx_hash": {
-      "title": "Transaction Hash",
+      "title": "Transaction Hash to Verify",
       "type": "string",
-      "description": "The blockchain transaction hash to verify (only needed when Verification Mode is enabled)",
-      "editor": "textfield",
-      "prefill": "",
-      "nullable": true
+      "description": "The blockchain transaction hash of the attestation you want to verify. Required when verification mode is enabled.",
+      "editor": "textfield"
     }
   },
   "required": ["chain", "data"]
