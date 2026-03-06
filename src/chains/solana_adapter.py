@@ -14,6 +14,7 @@ from solders.message import Message
 from solders.instruction import Instruction, AccountMeta
 from solders.system_program import TransferParams, transfer
 from solders.pubkey import Pubkey
+from solders.signature import Signature
 
 from .base_chain import ChainAdapter
 from ..attestation.schema import AttestationOutput, CostInfo, VerificationInfo
@@ -115,9 +116,12 @@ class SolanaAdapter(ChainAdapter):
                 # Send transaction with skip_preflight to avoid blockhash timing issues
                 opts = TxOpts(skip_preflight=True, preflight_commitment=Confirmed)
                 result = await self.client.send_transaction(transaction, opts=opts)
-                tx_signature = str(result.value)
 
-                # Wait for confirmation
+                # result.value is already a Signature object
+                tx_signature = result.value
+                tx_signature_str = str(tx_signature)
+
+                # Wait for confirmation (confirm_transaction expects Signature object)
                 await self.client.confirm_transaction(tx_signature, Confirmed)
 
                 # Get transaction details for block number
@@ -156,8 +160,8 @@ class SolanaAdapter(ChainAdapter):
         return AttestationOutput(
             attestation_id=attestation_id,
             chain="solana",
-            tx_hash=tx_signature,
-            explorer_url=self.get_explorer_url(tx_signature),
+            tx_hash=tx_signature_str,
+            explorer_url=self.get_explorer_url(tx_signature_str),
             data_hash=data_hash,
             attestor_address=wallet.address,
             timestamp=attestation_data["timestamp"],
@@ -172,14 +176,16 @@ class SolanaAdapter(ChainAdapter):
         Verify a Solana attestation.
 
         Args:
-            tx_hash: Transaction signature
+            tx_hash: Transaction signature (as string)
             expected_hash: Expected data hash
 
         Returns:
             True if attestation exists and hash matches
         """
         try:
-            tx_info = await self.client.get_transaction(tx_hash, Confirmed)
+            # Convert string to Signature object
+            signature = Signature.from_string(tx_hash)
+            tx_info = await self.client.get_transaction(signature, Confirmed)
 
             if not tx_info.value:
                 return False
