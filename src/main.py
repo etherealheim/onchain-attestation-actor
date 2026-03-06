@@ -11,20 +11,45 @@ from src.verification import verify_attestation
 
 async def fetch_actor_run_data(run_id: str, token: str = None) -> dict:
     """Fetch the output data from an Actor run."""
-    # Try to get token from environment if not provided
     if not token:
         token = os.getenv("APIFY_TOKEN")
 
     if not token:
         raise ValueError("APIFY_TOKEN is required to fetch run data")
 
-    # Fetch the dataset items from the run
     url = f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items"
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url, params={"token": token}, timeout=30.0)
         response.raise_for_status()
         return response.json()
+
+
+async def fetch_actor_info(actor_id: str, token: str = None) -> dict:
+    """Fetch Actor details (name, description) from Apify API."""
+    if not token:
+        token = os.getenv("APIFY_TOKEN")
+
+    if not token:
+        return {}  # Return empty if no token - origin will be unknown
+
+    url = f"https://api.apify.com/v2/acts/{actor_id}"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params={"token": token}, timeout=10.0)
+            response.raise_for_status()
+            data = response.json()
+
+            return {
+                "name": data.get("name"),  # e.g., "instagram-scraper"
+                "username": data.get("username"),  # e.g., "apify"
+                "title": data.get("title"),  # e.g., "Instagram Scraper"
+                "description": data.get("description"),
+                "full_name": f"{data.get('username', 'unknown')}/{data.get('name', 'unknown')}",
+            }
+    except Exception:
+        return {}  # Fail silently - origin will just be unknown
 
 
 async def main():
@@ -72,8 +97,14 @@ async def main():
 
                 Actor.log.info(f"Source Actor: {source_actor_id}, Run: {source_run_id}")
 
+                # Fetch Actor info to get human-readable name (origin/provenance)
+                actor_info = await fetch_actor_info(source_actor_id)
+                origin = actor_info.get("full_name", "unknown")
+                actor_title = actor_info.get("title")
+
+                Actor.log.info(f"Data origin: {origin} ({actor_title or 'no title'})")
+
                 # Fetch the actual data from the source run
-                # APIFY_TOKEN is automatically available when running on Apify platform
                 data = await fetch_actor_run_data(source_run_id)
 
                 # Count items if not from stats
@@ -83,25 +114,18 @@ async def main():
                 Actor.log.info(f"Fetched {item_count} items from source run")
 
                 # Build comprehensive metadata for on-chain record
-                # Include data URL so anyone can verify the attestation
                 data_url = (
                     f"https://api.apify.com/v2/datasets/{default_dataset_id}/items"
                     if default_dataset_id
                     else None
                 )
-                run_url = (
-                    f"https://console.apify.com/actors/runs/{source_run_id}"
-                    if source_run_id
-                    else None
-                )
 
                 # Auto-populate metadata with useful context
                 actor_input["run_id"] = source_run_id
+                actor_input["origin"] = origin  # e.g., "apify/instagram-scraper"
                 actor_input["actor_id"] = source_actor_id
                 if data_url:
                     actor_input["data_url"] = data_url
-                if run_url:
-                    actor_input["run_url"] = run_url
                 if item_count:
                     actor_input["item_count"] = item_count
 
@@ -148,7 +172,12 @@ async def main():
             # Build metadata - prioritize useful, verifiable info
             metadata = {}
 
-            # Data URL is most important - allows anyone to verify the attestation
+            # Origin/provenance - where did this data come from?
+            # e.g., "apify/instagram-scraper" - human-readable Actor name
+            if actor_input.get("origin"):
+                metadata["origin"] = actor_input["origin"]
+
+            # Data URL - allows anyone to verify the attestation
             if actor_input.get("data_url"):
                 metadata["data"] = actor_input["data_url"]
 
@@ -160,11 +189,7 @@ async def main():
             if actor_input.get("source_url"):
                 metadata["src"] = actor_input["source_url"]
 
-            # Short description
-            if actor_input.get("description"):
-                metadata["desc"] = actor_input["description"]
-
-            # Run reference (shortened to save space)
+            # Run reference for traceability
             if actor_input.get("run_id"):
                 metadata["run"] = actor_input["run_id"]
 
