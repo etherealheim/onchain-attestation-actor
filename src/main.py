@@ -49,8 +49,8 @@ async def main():
                 Actor.log.info(f"Source Actor: {source_actor_id}, Run: {source_run_id}")
 
                 # Fetch the actual data from the source run
-                apify_token = actor_input.get("apify_token") or os.getenv("APIFY_TOKEN")
-                data = await fetch_actor_run_data(source_run_id, apify_token)
+                # APIFY_TOKEN is automatically available when running on Apify platform
+                data = await fetch_actor_run_data(source_run_id)
 
                 Actor.log.info(
                     f"Fetched {len(data) if isinstance(data, list) else 1} items from source run"
