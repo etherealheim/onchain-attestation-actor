@@ -37,14 +37,27 @@ async def main():
         try:
             # Check if this is a webhook payload from another Actor
             # Webhook payloads have 'resource' with run details
-            if "resource" in actor_input and "actorRunId" in actor_input.get(
-                "resource", {}
-            ):
+            resource = actor_input.get("resource", {})
+
+            # Log the resource to help debug
+            if resource:
+                Actor.log.info(f"Received resource keys: {list(resource.keys())}")
+
+            # Check various possible field names for run ID
+            source_run_id = (
+                resource.get("actorRunId")
+                or resource.get("id")
+                or resource.get("runId")
+            )
+
+            if resource and source_run_id:
                 Actor.log.info("Detected webhook payload from another Actor")
 
-                resource = actor_input["resource"]
-                source_run_id = resource.get("actorRunId") or resource.get("id")
-                source_actor_id = resource.get("actId") or resource.get("actorId")
+                source_actor_id = (
+                    resource.get("actId")
+                    or resource.get("actorId")
+                    or resource.get("actorTaskId")
+                )
 
                 Actor.log.info(f"Source Actor: {source_actor_id}, Run: {source_run_id}")
 
