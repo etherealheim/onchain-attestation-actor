@@ -1,11 +1,30 @@
 """Main entry point for the on-chain attestation Actor."""
 
 import os
+import httpx
 from apify import Actor
 from src.attestation import sha256_hash
 from src.chains import SolanaAdapter, BaseAdapter
 from src.wallet import SolanaWallet, EVMWallet
 from src.verification import verify_attestation
+
+
+async def fetch_actor_run_data(run_id: str, token: str = None) -> dict:
+    """Fetch the output data from an Actor run."""
+    # Try to get token from environment if not provided
+    if not token:
+        token = os.getenv("APIFY_TOKEN")
+
+    if not token:
+        raise ValueError("APIFY_TOKEN is required to fetch run data")
+
+    # Fetch the dataset items from the run
+    url = f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, params={"token": token}, timeout=30.0)
+        response.raise_for_status()
+        return response.json()
 
 
 async def main():
@@ -16,12 +35,44 @@ async def main():
         Actor.log.info(f"Received input keys: {list(actor_input.keys())}")
 
         try:
+            # Check if this is a webhook payload from another Actor
+            # Webhook payloads have 'resource' with run details
+            if "resource" in actor_input and "actorRunId" in actor_input.get(
+                "resource", {}
+            ):
+                Actor.log.info("Detected webhook payload from another Actor")
+
+                resource = actor_input["resource"]
+                source_run_id = resource.get("actorRunId") or resource.get("id")
+                source_actor_id = resource.get("actId") or resource.get("actorId")
+
+                Actor.log.info(f"Source Actor: {source_actor_id}, Run: {source_run_id}")
+
+                # Fetch the actual data from the source run
+                apify_token = actor_input.get("apify_token") or os.getenv("APIFY_TOKEN")
+                data = await fetch_actor_run_data(source_run_id, apify_token)
+
+                Actor.log.info(
+                    f"Fetched {len(data) if isinstance(data, list) else 1} items from source run"
+                )
+
+                # Auto-populate metadata from webhook
+                if not actor_input.get("actor_id"):
+                    actor_input["actor_id"] = source_actor_id
+                if not actor_input.get("run_id"):
+                    actor_input["run_id"] = source_run_id
+
+            else:
+                # Direct input mode - data is provided directly
+                data = actor_input.get("data", {})
+
             # Extract required fields
             chain = actor_input.get("chain", "solana")
-            data = actor_input.get("data", {})
 
             if not data:
-                raise ValueError("'data' field is required")
+                raise ValueError(
+                    "'data' field is required (or webhook payload with run data)"
+                )
 
             # Check if this is a verification request
             verify_mode = actor_input.get("verify_mode", False)

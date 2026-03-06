@@ -43,6 +43,13 @@
       "description": "Custom Base RPC endpoint. Leave empty to use the default public endpoint.",
       "editor": "textfield"
     },
+    "apify_token": {
+      "title": "Apify API Token",
+      "type": "string",
+      "description": "Your Apify API token. Required for webhook mode to fetch data from other Actor runs. Get it from Settings → Integrations → API tokens.",
+      "editor": "textfield",
+      "isSecret": true
+    },
     "data": {
       "title": "Data to Attest",
       "type": "object",
@@ -110,5 +117,5 @@
       "editor": "textfield"
     }
   },
-  "required": ["chain", "data"]
+  "required": ["chain"]
 }
