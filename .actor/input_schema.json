@@ -6,84 +6,109 @@
     "chain": {
       "title": "Blockchain",
       "type": "string",
-      "description": "Which blockchain to write the attestation to",
+      "description": "Which blockchain to write the attestation to. **Solana** is fastest (~$0.001, <1s), **Base** is best for compliance (~$0.02, 2-5s).",
       "enum": ["solana", "base"],
-      "enumTitles": ["Solana (fastest, cheapest)", "Base (EAS, compliance-focused)"],
+      "enumTitles": ["⚡ Solana (Fastest, Cheapest)", "🔒 Base (Compliance-Focused)"],
       "default": "solana",
       "editor": "select"
     },
     "data": {
       "title": "Data to Attest",
       "type": "object",
-      "description": "The data to create an attestation for. Can be any JSON structure. Will be hashed (not stored on-chain in full).",
-      "editor": "json"
-    },
-    "metadata": {
-      "title": "Metadata",
-      "type": "object",
-      "description": "Additional context about the data (optional)",
+      "description": "The data you want to create an on-chain proof for. This will be hashed with SHA-256 (only the hash goes on-chain, not the full data).",
       "editor": "json",
-      "properties": {
-        "actor_id": {
-          "type": "string",
-          "title": "Actor ID",
-          "description": "The Apify Actor that produced this data"
-        },
-        "run_id": {
-          "type": "string",
-          "title": "Run ID",
-          "description": "The specific Actor run ID"
-        },
-        "source_url": {
-          "type": "string",
-          "title": "Source URL",
-          "description": "The URL this data was scraped from"
-        },
-        "description": {
-          "type": "string",
-          "title": "Description",
-          "description": "Human-readable description of this attestation"
-        },
-        "custom": {
-          "type": "object",
-          "title": "Custom Metadata",
-          "description": "Any additional custom fields",
-          "editor": "json"
-        }
+      "prefill": {
+        "example": "Your data here",
+        "timestamp": "2026-03-06T14:30:00Z",
+        "source": "https://example.com"
       }
     },
-    "options": {
+    "sectionCaption_metadata": {
+      "title": "Metadata (Optional)",
+      "type": "null",
+      "sectionCaption": "📋 Metadata & Options",
+      "sectionDescription": "Add context about your attestation and configure how it's stored"
+    },
+    "actor_id": {
+      "title": "Actor ID",
+      "type": "string",
+      "description": "The Apify Actor that produced this data (e.g., 'apify/google-search-scraper')",
+      "editor": "textfield",
+      "prefill": "",
+      "nullable": true
+    },
+    "run_id": {
+      "title": "Run ID",
+      "type": "string",
+      "description": "The specific Actor run ID that produced this data",
+      "editor": "textfield",
+      "prefill": "",
+      "nullable": true
+    },
+    "source_url": {
+      "title": "Source URL",
+      "type": "string",
+      "description": "The URL where this data was scraped from",
+      "editor": "textfield",
+      "prefill": "",
+      "pattern": "^https?://.*",
+      "nullable": true
+    },
+    "description": {
+      "title": "Description",
+      "type": "string",
+      "description": "A human-readable description of what this attestation is for",
+      "editor": "textarea",
+      "prefill": "",
+      "nullable": true
+    },
+    "custom_metadata": {
+      "title": "Custom Metadata",
+      "type": "object",
+      "description": "Any additional custom fields you want to include (JSON object)",
+      "editor": "json",
+      "prefill": {},
+      "nullable": true
+    },
+    "sectionCaption_options": {
       "title": "Options",
-      "type": "object",
-      "description": "Attestation options",
-      "editor": "json",
-      "properties": {
-        "verification_url": {
-          "type": "boolean",
-          "title": "Generate Verification URL",
-          "description": "Include a verification URL in the output",
-          "default": true
-        },
-        "store_full_data": {
-          "type": "boolean",
-          "title": "Store Full Data in Apify",
-          "description": "Store the full data in Apify Key-Value store (in addition to on-chain hash)",
-          "default": true
-        }
-      }
+      "type": "null",
+      "sectionCaption": "⚙️ Advanced Options"
     },
-    "verify": {
-      "title": "Verification Mode",
+    "generate_verification_url": {
+      "title": "Generate Verification URL",
       "type": "boolean",
-      "description": "Set to true to verify an existing attestation instead of creating a new one",
+      "description": "Include a verification URL in the output for easy verification",
+      "default": true,
+      "groupCaption": "Output Options"
+    },
+    "store_full_data": {
+      "title": "Store Full Data in Apify",
+      "type": "boolean",
+      "description": "Store the complete data in Apify's Key-Value store (in addition to on-chain hash). Useful for later verification.",
+      "default": true
+    },
+    "sectionCaption_verify": {
+      "title": "Verification Mode",
+      "type": "null",
+      "sectionCaption": "🔍 Verification Mode (Advanced)",
+      "sectionDescription": "Use this to verify an existing attestation instead of creating a new one"
+    },
+    "verify_mode": {
+      "title": "Enable Verification Mode",
+      "type": "boolean",
+      "description": "Check this to verify an existing attestation instead of creating a new one",
       "default": false,
-      "editor": "checkbox"
+      "editor": "checkbox",
+      "groupCaption": "Verification"
     },
     "tx_hash": {
-      "title": "Transaction Hash (for verification)",
+      "title": "Transaction Hash",
       "type": "string",
-      "description": "The blockchain transaction hash to verify (only used when verify=true)",
-      "editor": "textfield"
+      "description": "The blockchain transaction hash to verify (only needed when Verification Mode is enabled)",
+      "editor": "textfield",
+      "prefill": "",
+      "nullable": true
     }
   },
   "required": ["chain", "data"]
