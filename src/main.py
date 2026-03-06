@@ -31,7 +31,7 @@ async def fetch_actor_info(actor_id: str, token: str = None) -> dict:
         token = os.getenv("APIFY_TOKEN")
 
     if not token:
-        return {}  # Return empty if no token - origin will be unknown
+        return {}
 
     url = f"https://api.apify.com/v2/acts/{actor_id}"
 
@@ -42,14 +42,33 @@ async def fetch_actor_info(actor_id: str, token: str = None) -> dict:
             data = response.json()
 
             return {
-                "name": data.get("name"),  # e.g., "instagram-scraper"
-                "username": data.get("username"),  # e.g., "apify"
-                "title": data.get("title"),  # e.g., "Instagram Scraper"
+                "name": data.get("name"),
+                "username": data.get("username"),
+                "title": data.get("title"),
                 "description": data.get("description"),
                 "full_name": f"{data.get('username', 'unknown')}/{data.get('name', 'unknown')}",
             }
     except Exception:
-        return {}  # Fail silently - origin will just be unknown
+        return {}
+
+
+async def fetch_run_input(run_id: str, token: str = None) -> dict:
+    """Fetch the input that was used for an Actor run."""
+    if not token:
+        token = os.getenv("APIFY_TOKEN")
+
+    if not token:
+        return {}
+
+    url = f"https://api.apify.com/v2/actor-runs/{run_id}/input"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params={"token": token}, timeout=10.0)
+            response.raise_for_status()
+            return response.json()
+    except Exception:
+        return {}
 
 
 async def main():
@@ -104,7 +123,14 @@ async def main():
 
                 Actor.log.info(f"Data origin: {origin} ({actor_title or 'no title'})")
 
-                # Fetch the actual data from the source run
+                # Fetch the input that was used for the source run
+                # This shows HOW the data was collected (e.g., which Instagram profile)
+                run_input = await fetch_run_input(source_run_id)
+                Actor.log.info(
+                    f"Source run input keys: {list(run_input.keys()) if run_input else 'none'}"
+                )
+
+                # Fetch the actual output data from the source run
                 data = await fetch_actor_run_data(source_run_id)
 
                 # Count items if not from stats
@@ -128,6 +154,8 @@ async def main():
                     actor_input["data_url"] = data_url
                 if item_count:
                     actor_input["item_count"] = item_count
+                if run_input:
+                    actor_input["source_input"] = run_input
 
             else:
                 # Direct input mode - data is provided directly
@@ -177,6 +205,46 @@ async def main():
             if actor_input.get("origin"):
                 metadata["origin"] = actor_input["origin"]
 
+            # Source input - HOW was the data collected?
+            # Extract key fields and hash the full input for verification
+            source_input = actor_input.get("source_input")
+            if source_input:
+                # Hash the full input so it can be verified later
+                input_hash = sha256_hash(source_input)
+                # Remove the "sha256:" prefix to save space, just keep first 16 chars
+                metadata["inputHash"] = input_hash[7:23]
+
+                # Extract commonly useful fields from scraper inputs
+                # These tell us WHAT was scraped (profile, search query, URL, etc.)
+                target_fields = [
+                    "username",
+                    "usernames",  # Instagram, Twitter
+                    "url",
+                    "urls",
+                    "startUrls",  # Generic
+                    "searchQuery",
+                    "search",
+                    "query",  # Search-based
+                    "hashtag",
+                    "hashtags",  # Instagram, Twitter
+                    "profileUrl",
+                    "profileUrls",  # Social media
+                ]
+
+                for field in target_fields:
+                    if field in source_input and source_input[field]:
+                        value = source_input[field]
+                        # If it's a list, join first few items
+                        if isinstance(value, list):
+                            value = value[:3]  # Max 3 items
+                            if len(value) == 1:
+                                value = value[0]
+                        # Truncate long strings
+                        if isinstance(value, str) and len(value) > 50:
+                            value = value[:47] + "..."
+                        metadata["target"] = value
+                        break  # Only include first matching field
+
             # Data URL - allows anyone to verify the attestation
             if actor_input.get("data_url"):
                 metadata["data"] = actor_input["data_url"]
@@ -184,10 +252,6 @@ async def main():
             # Item count provides context
             if actor_input.get("item_count"):
                 metadata["items"] = actor_input["item_count"]
-
-            # Source URL if provided (for direct input mode)
-            if actor_input.get("source_url"):
-                metadata["src"] = actor_input["source_url"]
 
             # Run reference for traceability
             if actor_input.get("run_id"):
