@@ -264,30 +264,36 @@ To verify an attestation:
 
 ## Environment Variables
 
-The Actor requires wallet credentials. **Important:** You must set these as secrets in the Apify Console.
+The Actor requires wallet credentials. You must set these in the Apify Console.
 
-### Required Secrets (set in Apify Console → Actor Settings → Environment Variables)
+### Required: Wallet Private Keys
 
 ```bash
 SOLANA_PRIVATE_KEY=base58_encoded_private_key
 BASE_PRIVATE_KEY=0x_prefixed_hex_private_key
 ```
 
-**How to set secrets in Apify:**
-1. Go to your Actor in Apify Console
-2. Navigate to Settings → Environment Variables
-3. Click "Add Secret"
-4. Add `SOLANA_PRIVATE_KEY` with your base58-encoded Solana private key
-5. Add `BASE_PRIVATE_KEY` with your 0x-prefixed hex EVM private key
+**How to set environment variables in Apify:**
 
-### Optional RPC URLs (already configured with defaults)
+1. Go to your Actor in **Apify Console**
+2. Click the **Source** tab
+3. Scroll down to the **Environment variables** section
+4. Add your variables:
+   - **Name:** `SOLANA_PRIVATE_KEY`
+   - **Value:** Your base58-encoded Solana private key
+   - **Check "Secret"** to encrypt and hide from logs
+5. Click **Save** and then **Build** to apply changes
+
+**Note:** Environment variables are baked into the build. After changing them, you must rebuild the Actor.
+
+### Optional: Custom RPC URLs
 
 ```bash
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com  # default
 BASE_RPC_URL=https://mainnet.base.org               # default
 ```
 
-These are already set in the Actor configuration and don't need to be changed unless you want to use a custom RPC endpoint.
+These are already set with defaults. Only change them if you want to use a custom RPC endpoint (e.g., for devnet testing or premium RPC providers).
 
 ## Cost Structure
 

@@ -58,16 +58,21 @@ Or use the web faucet: https://faucet.solana.com/
 
 ### Step 3: Configure Apify Actor
 
-1. Go to your Actor in Apify Console
-2. Navigate to **Settings → Environment Variables**
-3. Click **"Add Secret"**
-4. Add:
-   - Name: `SOLANA_PRIVATE_KEY`
-   - Value: Your base58-encoded private key from Step 1
+1. Go to your Actor in **Apify Console**
+2. Click on the **Source** tab
+3. Scroll down to the **Environment variables** section
+4. Add your private key:
+   - **Variable name:** `SOLANA_PRIVATE_KEY`
+   - **Value:** Your base58-encoded private key from Step 1
+   - **Check the "Secret" checkbox** (this encrypts the value and hides it from logs)
+5. Click **Save** and then **Build** to apply the changes
 
 **For Devnet Testing:** Also add:
-   - Name: `SOLANA_RPC_URL`
-   - Value: `https://api.devnet.solana.com`
+   - **Variable name:** `SOLANA_RPC_URL`
+   - **Value:** `https://api.devnet.solana.com`
+   - (No need to mark as Secret)
+
+**Important:** Environment variables are set at build time. After adding/changing them, you must create a new build for the changes to take effect.
 
 ### Step 4: Test Your First Attestation
 

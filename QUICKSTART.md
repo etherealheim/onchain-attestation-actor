@@ -102,22 +102,25 @@ cd git-local/onchain-attestation-actor
 apify push
 ```
 
-### 4. Configure Secrets
+### 4. Configure Environment Variables
 
-**IMPORTANT:** You must configure wallet private keys in Apify Console.
+**IMPORTANT:** You must add your wallet private key in Apify Console.
 
 In Apify Console:
-1. Go to your Actor → Settings
-2. Click on "Environment Variables" tab
-3. Click "Add Secret" button
-4. Add these two secrets:
-   - Name: `SOLANA_PRIVATE_KEY`, Value: your base58-encoded Solana private key
-   - Name: `BASE_PRIVATE_KEY`, Value: your 0x-prefixed hex EVM private key
+1. Go to your Actor
+2. Click the **Source** tab
+3. Scroll down to **Environment variables** section
+4. Add your private key:
+   - **Name:** `SOLANA_PRIVATE_KEY`
+   - **Value:** your base58-encoded Solana private key (from Phantom: Settings → Export Private Key)
+   - **Check "Secret"** checkbox to encrypt and hide from logs
+5. Click **Save**
+6. Click **Build** to create a new build with the environment variable
 
 **Security Note:** 
-- These are stored as encrypted secrets in Apify
-- They are NOT committed to the repository
-- The Actor reads them from environment variables at runtime
+- When marked as "Secret", values are encrypted and redacted from logs
+- Environment variables are baked into the build at build time
+- After changing variables, you must rebuild for changes to take effect
 
 ### 5. Test Run
 
