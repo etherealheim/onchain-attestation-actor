@@ -1,13 +1,16 @@
 """Attestation verification utilities."""
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from ..attestation.schema import VerificationResult, AttestationOutput
 from ..attestation.hasher import verify_hash
 from ..chains import SolanaAdapter, BaseAdapter
 
 
 async def verify_attestation(
-    tx_hash: str, chain: str, original_data: Dict[str, Any], rpc_url: str = None
+    tx_hash: str,
+    chain: str,
+    original_data: Dict[str, Any],
+    rpc_url: Optional[str] = None,
 ) -> VerificationResult:
     """
     Verify an attestation by comparing on-chain data with provided data.
@@ -40,7 +43,8 @@ async def verify_attestation(
         # Verify on-chain
         is_valid = await adapter.verify(tx_hash, expected_hash)
 
-        if chain == "solana":
+        # Close connection if adapter has close method (Solana)
+        if hasattr(adapter, "close"):
             await adapter.close()
 
         if is_valid:

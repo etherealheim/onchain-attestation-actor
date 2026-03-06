@@ -100,8 +100,8 @@ async def main():
             Actor.log.info("Submitting attestation to blockchain...")
             attestation = await adapter.attest(data_hash, metadata, wallet)
 
-            # Close Solana connection if applicable
-            if chain == "solana":
+            # Close connection if adapter has close method (Solana)
+            if hasattr(adapter, "close"):
                 await adapter.close()
 
             Actor.log.info(f"✅ Attestation created: {attestation.tx_hash}")
