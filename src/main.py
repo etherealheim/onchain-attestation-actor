@@ -64,29 +64,35 @@ async def main():
             if actor_input.get("custom_metadata"):
                 metadata["custom"] = actor_input["custom_metadata"]
 
-            # Get wallet credentials from environment
+            # Get wallet credentials from input (with fallback to environment variables)
             if chain == "solana":
-                private_key = os.getenv("SOLANA_PRIVATE_KEY")
+                private_key = actor_input.get("solana_private_key") or os.getenv(
+                    "SOLANA_PRIVATE_KEY"
+                )
                 if not private_key:
                     raise ValueError(
-                        "SOLANA_PRIVATE_KEY environment variable is required. Please set it in Actor Settings → Environment Variables."
+                        "Solana private key is required. Please provide 'solana_private_key' in the input."
                     )
 
                 wallet = SolanaWallet(private_key)
-                rpc_url = os.getenv("SOLANA_RPC_URL")
+                rpc_url = actor_input.get("solana_rpc_url") or os.getenv(
+                    "SOLANA_RPC_URL"
+                )
                 adapter = SolanaAdapter(rpc_url)
 
                 Actor.log.info(f"Using Solana wallet: {wallet.address}")
 
             elif chain == "base":
-                private_key = os.getenv("BASE_PRIVATE_KEY")
+                private_key = actor_input.get("base_private_key") or os.getenv(
+                    "BASE_PRIVATE_KEY"
+                )
                 if not private_key:
                     raise ValueError(
-                        "BASE_PRIVATE_KEY environment variable is required. Please set it in Actor Settings → Environment Variables."
+                        "Base private key is required. Please provide 'base_private_key' in the input."
                     )
 
                 wallet = EVMWallet(private_key)
-                rpc_url = os.getenv("BASE_RPC_URL")
+                rpc_url = actor_input.get("base_rpc_url") or os.getenv("BASE_RPC_URL")
                 adapter = BaseAdapter(rpc_url)
 
                 Actor.log.info(f"Using Base wallet: {wallet.address}")

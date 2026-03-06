@@ -13,6 +13,36 @@
       "default": "solana",
       "editor": "select"
     },
+    "solana_private_key": {
+      "title": "Solana Private Key",
+      "type": "string",
+      "description": "Your Solana wallet private key (base58 encoded). Required for Solana attestations. The wallet needs SOL for transaction fees (~0.000005 SOL per attestation).",
+      "editor": "textfield",
+      "isSecret": true,
+      "sectionCaption": "Wallet Configuration",
+      "sectionDescription": "Provide your blockchain wallet credentials. These are used to sign and pay for attestation transactions. Your keys are never stored or logged."
+    },
+    "base_private_key": {
+      "title": "Base Private Key",
+      "type": "string",
+      "description": "Your Base/Ethereum wallet private key (hex format, with or without 0x prefix). Required for Base attestations. The wallet needs ETH for gas fees (~0.00001 ETH per attestation).",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "solana_rpc_url": {
+      "title": "Solana RPC URL (Optional)",
+      "type": "string",
+      "description": "Custom Solana RPC endpoint. Leave empty to use the default public endpoint. Use a private RPC for better reliability.",
+      "editor": "textfield",
+      "sectionCaption": "Advanced Settings",
+      "sectionDescription": "Optional settings for power users. Leave empty to use defaults."
+    },
+    "base_rpc_url": {
+      "title": "Base RPC URL (Optional)",
+      "type": "string",
+      "description": "Custom Base RPC endpoint. Leave empty to use the default public endpoint.",
+      "editor": "textfield"
+    },
     "data": {
       "title": "Data to Attest",
       "type": "object",
